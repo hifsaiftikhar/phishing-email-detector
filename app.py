@@ -52,4 +52,4 @@ if __name__ == "__main__":
     print("  URL: http://localhost:5000")
     print("  Press CTRL+C to stop")
     print("="*45)
-    app.run(debug=True, port=5000)
+    app.run(host="0.0.0.0", port=7860)

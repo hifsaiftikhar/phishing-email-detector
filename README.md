@@ -123,6 +123,4 @@ Open any email in Gmail. Click the red Check Email button at the bottom right of
 - **Synthetic emails:** 30 manually created emails for development
 
 ## Author
-
-Hifsa Iftikhar
-BS Artificial Intelligence — University of Management and Technology (UMT), Lahore
+Hifsa Iftikhar GitHub: @hifsaiftikhar

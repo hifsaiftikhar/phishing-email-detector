@@ -1,5 +1,5 @@
 // popup.js
-const SERVER_URL = "http://localhost:5000/analyze";
+const SERVER_URL = "https://hifsa65-phishing-email-detector.hf.space/analyze";
 
 document.getElementById("analyzeBtn").addEventListener("click", analyzeEmail);
 

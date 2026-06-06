@@ -51,7 +51,7 @@ function injectButton() {
         // Send to Flask and show result
         btn.innerHTML = "⏳ Analyzing...";
 
-        fetch("http://localhost:5000/analyze", {
+        fetch("https://hifsa65-phishing-email-detector.hf.space/analyze", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({

@@ -1,3 +1,12 @@
+---
+title: Phishing Email Detector
+emoji: 🔍
+colorFrom: red
+colorTo: gray
+sdk: docker
+pinned: false
+---
+
 # Phishing Email Detector
 
 A Chrome extension that detects phishing emails using a Large Language Model (LLM) and VirusTotal URL scanning.

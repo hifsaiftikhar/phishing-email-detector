@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Phishing Detector</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+    body { width: 420px; background: #0f0f0f; color: #f0f0f0; padding: 20px; }
+    h2 { font-size: 16px; color: #ffffff; margin-bottom: 4px; }
+    p.subtitle { font-size: 11px; color: #888; margin-bottom: 6px; }
+    .gmail-note {
+      background: #1a1a2e;
+      border: 1px solid #2a2a5a;
+      border-radius: 6px;
+      padding: 10px 12px;
+      font-size: 11px;
+      color: #aaa;
+      margin-bottom: 14px;
+    }
+    .gmail-note span { color: #e74c3c; font-weight: bold; }
+    label { font-size: 12px; color: #aaa; display: block; margin-bottom: 4px; }
+    input, textarea {
+      width: 100%; background: #1e1e1e; border: 1px solid #333;
+      border-radius: 6px; color: #f0f0f0; font-size: 12px;
+      padding: 8px; margin-bottom: 10px; resize: none; outline: none;
+    }
+    input:focus, textarea:focus { border-color: #555; }
+    button#analyzeBtn {
+      width: 100%; padding: 10px; background: #c0392b;
+      color: white; font-size: 13px; font-weight: bold;
+      border: none; border-radius: 6px; cursor: pointer;
+    }
+    button#analyzeBtn:hover { background: #a93226; }
+    button:disabled { background: #444; cursor: not-allowed; }
+    #result { margin-top: 14px; display: none; }
+    .verdict-box { border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; }
+    .verdict-phishing   { background: #2c0b0b; border: 1px solid #c0392b; }
+    .verdict-legitimate { background: #0b2c0f; border: 1px solid #27ae60; }
+    .verdict-unknown    { background: #1e1e1e; border: 1px solid #555; }
+    .verdict-label { font-size: 18px; font-weight: bold; margin-bottom: 4px; }
+    .phishing-color    { color: #e74c3c; }
+    .legitimate-color  { color: #2ecc71; }
+    .unknown-color     { color: #aaa; }
+    .risk        { font-size: 11px; color: #aaa; margin-bottom: 8px; }
+    .explanation { font-size: 12px; color: #ccc; line-height: 1.5; margin-bottom: 8px; }
+    .flags-title { font-size: 11px; color: #888; margin-bottom: 4px; }
+    .flag-item   { font-size: 11px; color: #e74c3c; background: #1a0a0a; border-radius: 4px; padding: 3px 7px; margin-bottom: 3px; }
+    .loading     { text-align: center; color: #888; font-size: 12px; padding: 10px 0; }
+    .error-box   { background: #1e1e1e; border: 1px solid #555; border-radius: 8px; padding: 10px 14px; color: #e74c3c; font-size: 12px; }
+  </style>
+</head>
+<body>
+
+  <h2>🔍 Phishing Email Detector</h2>
+  <p class="subtitle">Paste email details below and click Analyze</p>
+
+  <div class="gmail-note">
+    📧 <span>Gmail users:</span> Open any email and click the red
+    <span>🔍 Check Email</span> button at the bottom right of your Gmail page.
+  </div>
+
+  <label>Sender</label>
+  <input type="text" id="sender" placeholder="e.g. security@paypal.com" />
+
+  <label>Subject</label>
+  <input type="text" id="subject" placeholder="e.g. Your account has been suspended" />
+
+  <label>Email Body</label>
+  <textarea id="body" rows="6" placeholder="Paste the email body text here..."></textarea>
+
+  <button id="analyzeBtn">Analyze Email</button>
+
+  <div id="result"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+.env
+__pycache__/
+*.pyc
+tempCodeRunnerFile.py
+evaluation_results.csv
+real_email_dataset.csv

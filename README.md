@@ -1,12 +1,3 @@
----
-title: Phishing Email Detector
-emoji: 🔍
-colorFrom: red
-colorTo: gray
-sdk: docker
-pinned: false
----
-
 # Phishing Email Detector
 
 A Chrome extension that detects phishing emails using a Large Language Model (LLM) and VirusTotal URL scanning.
@@ -14,6 +5,10 @@ A Chrome extension that detects phishing emails using a Large Language Model (LL
 ## Overview
 
 This project combines AI-powered email analysis with real-time URL scanning to identify phishing emails. Users can paste email content into the Chrome extension or use the floating button directly inside Gmail to get an instant verdict.
+
+## Live Demo
+API is deployed on Hugging Face:
+https://hifsa65-phishing-email-detector.hf.space/health
 
 ## Features
 

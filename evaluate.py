@@ -32,7 +32,7 @@ def run_evaluation():
 
     # Load dataset
     print("Loading dataset...")
-    df = pd.read_csv("real_email_dataset.csv")
+    df = pd.read_csv("structured_test_dataset.csv")
     total = len(df)
     print(f"Total emails to evaluate: {total}\n")
 

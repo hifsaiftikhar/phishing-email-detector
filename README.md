@@ -59,16 +59,6 @@ phishing-email-detector/
 | Frontend | HTML, CSS, JavaScript |
 | Browser | Chrome Extension (Manifest V3) |
 
-## Evaluation Results
-
-Tested on 100 real emails (50 phishing from Nazario corpus + 50 legitimate from Enron dataset).
-
-| Metric | Score |
-|--------|-------|
-| Accuracy | 99.00% |
-| Precision | 100.00% |
-| Recall | 98.00% |
-| F1 Score | 98.99% |
 
 ## Setup Instructions
 

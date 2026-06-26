@@ -1,160 +1,170 @@
-# Phishing Email Detector
+# Phishing Email Detection Agent
 
-A Chrome extension that detects phishing emails using a Large Language Model (LLM) and VirusTotal URL scanning.
+An AI agent that autonomously detects phishing emails using tool-calling,
+trajectory evaluation, and multi-signal analysis.
 
-## Overview
+Built as a capstone project for the Google x Kaggle 5-Day AI Agents
+Intensive Vibe Coding Course.
 
-This project combines AI-powered email analysis with real-time URL scanning to identify phishing emails. Users can paste email content into the Chrome extension or use the floating button directly inside Gmail to get an instant verdict.
+## What Makes This an Agent (Not Just a Classifier)
 
-## Live Demo
-API is deployed on Hugging Face:
-https://hifsa65-phishing-email-detector.hf.space/health
+Most phishing detectors make one LLM call and return a verdict.
+This system is a proper tool-calling agent — the LLM autonomously
+decides which tools to invoke based on what it discovers at each step.
 
-## Features
+Example agent reasoning:
+- Reads email → finds suspicious URLs → calls url_scanner
+- URL scan returns clean → notices new domain → calls domain_checker
+- Domain is 3 days old → flags HIGH RISK → calls generate_verdict
 
-- AI-powered phishing detection using Groq (Llama 3.3 70B)
-- Real-time URL scanning via VirusTotal (70+ antivirus engines)
-- Chrome extension with clean popup UI
-- Floating Check Email button inside Gmail
-- 99% accuracy on 100 real emails from Nazario and Enron datasets
-- Returns verdict, risk score, explanation, and red flags
+The agent's path changes based on evidence. No fixed pipeline.
 
-## System Architecture
+## Architecture
 
 ```
 User (Gmail or manual paste)
         ↓
 Chrome Extension (ext/)
         ↓
-Flask Backend (app.py)
+Flask API (app.py)
         ↓
-Email Parser → LLM (Groq API) + URL Scanner (VirusTotal)
+Security Screener (security/screener.py)
         ↓
-Verdict: PHISHING or LEGITIMATE
+Agent Loop (agent.py)
+        ↓
+Tool Selection by LLM (autonomous)
+        ↓
+Tools:
+  - analyze_email_text
+  - scan_email_urls (VirusTotal)
+  - check_sender_domain (WHOIS)
+  - generate_verdict
+        ↓
+Trajectory Logger → trajectory_logs/
+        ↓
+Verdict: PHISHING / SUSPICIOUS / LEGITIMATE
 ```
+
+## Course Concepts Applied
+
+| Day | Concept | Implementation |
+|-----|---------|----------------|
+| Day 1 | Agent loop, factory model | agent.py autonomous tool-calling loop |
+| Day 1 | Harness design | AGENTS.md, security screener, trajectory logging |
+| Day 2 | Tool integration | VirusTotal MCP-style tool, WHOIS domain checker |
+| Day 3 | Agent Skills | skills/ folder with 4 SKILL.md files |
+| Day 3 | Progressive disclosure | Skills load only when triggered |
+| Day 4 | Security screening | Prompt injection detection before LLM call |
+| Day 4 | Trajectory evaluation | Every agent step logged to trajectory_logs/ |
+| Day 5 | Spec-driven development | Golden dataset + automated evaluator |
 
 ## Project Structure
 
 ```
 phishing-email-detector/
-    app.py               # Flask backend server
-    email_parser.py      # Extracts sender, subject, body, URLs, signals
-    prompt_engine.py     # Sends email to Groq AI, returns verdict
-    url_scanner.py       # Checks URLs against VirusTotal
-    evaluate.py          # Runs evaluation on dataset, calculates metrics
-    ext/
-        manifest.json    # Chrome extension config
-        popup.html       # Extension UI
-        popup.js         # Extension logic
-        content.js       # Gmail floating button
+  agent.py                    # Main agent loop with tool calling
+  app.py                      # Flask API
+  email_parser.py             # Email component extraction
+  url_scanner.py              # VirusTotal integration
+  prompt_engine.py            # Legacy LLM engine
+  evaluate.py                 # Legacy evaluator
+  AGENTS.md                   # Agent rules and harness design
+  tools/
+    domain_checker.py         # WHOIS domain reputation checker
+  skills/
+    email-analysis/SKILL.md   # Email text analysis skill
+    url-scanning/SKILL.md     # URL scanning skill
+    domain-reputation/SKILL.md # Domain reputation skill
+    verdict-generation/SKILL.md # Verdict generation skill
+  security/
+    screener.py               # Prompt injection detection
+  evaluation/
+    golden_dataset.json       # 8 test cases with expected outputs
+    evaluator.py              # Automated evaluation runner
+  trajectory_logs/            # Agent reasoning traces
+  ext/                        # Chrome extension
+  Dockerfile                  # Docker deployment
+```
+
+## Agent Evaluation Results
+
+Tested on original benchmark:
+
+| Dataset | Accuracy | Precision | Recall | F1 |
+|---------|----------|-----------|--------|-----|
+| Nazario + Enron (100 emails) | 99% | 100% | 98% | 98.99% |
+| Structured test set (127 emails) | 95.41% | 97.18% | 95.83% | 96.50% |
+
+## Security Features
+
+- Prompt injection detection before every LLM call
+- All 10 prompt injection attempts correctly flagged as PHISHING
+- Zero false positives on 30 legitimate transactional emails
+- Social engineering detection without URLs
+
+## Sample Trajectory Log
+
+```json
+{
+  "timestamp": "2026-07-01T10:23:45",
+  "verdict": {"verdict": "PHISHING", "risk_score": 5, "confidence": "HIGH"},
+  "steps": [
+    {"step": "security_screen", "result": {"safe": true}},
+    {"step": "email_parse", "result": {"urls": ["http://paypa1.xyz/login"]}},
+    {"step": "analyze_email_text", "output": {"risk_level": "HIGH", "red_flags": ["urgency"]}},
+    {"step": "scan_email_urls", "output": {"verdict": "MALICIOUS", "malicious_count": 8}},
+    {"step": "check_sender_domain", "output": {"typosquat_detected": true, "age_days": 3}},
+    {"step": "generate_verdict", "output": {"verdict": "PHISHING", "risk_score": 5}}
+  ],
+  "total_steps": 6
+}
+```
+
+## Live Demo
+
+API deployed on Hugging Face:
+https://hifsa65-phishing-email-detector.hf.space/health
+
+## Setup
+
+```bash
+git clone https://github.com/hifsaiftikhar/phishing-email-detector.git
+cd phishing-email-detector
+pip install flask flask-cors groq requests python-dotenv python-whois
+```
+
+Create `.env`:
+```
+GROQ_API_KEY=your_groq_api_key
+VT_API_KEY=your_virustotal_api_key
+```
+
+Run:
+```bash
+python app.py
+```
+
+Run evaluation:
+```bash
+python evaluation/evaluator.py
 ```
 
 ## Tech Stack
 
 | Component | Technology |
-|-----------|-----------|
-| Backend | Python, Flask |
+|-----------|------------|
+| Agent Framework | Custom tool-calling loop with Groq |
 | AI Model | Llama 3.3 70B via Groq API |
 | URL Scanner | VirusTotal API |
-| Frontend | HTML, CSS, JavaScript |
-| Browser | Chrome Extension (Manifest V3) |
-
-## Evaluation Results
-
-### Dataset 1: Nazario + Enron (Standard Benchmark)
-Tested on 100 real emails — 50 phishing from Nazario corpus + 50 legitimate from Enron dataset.
-
-| Metric | Score |
-|--------|-------|
-| Accuracy | 99.00% |
-| Precision | 100.00% |
-| Recall | 98.00% |
-| F1 Score | 98.99% |
-
-### Dataset 2: Structured Test Set (127 emails)
-Tested on a diverse structured dataset across 5 categories.
-
-| Category | Count |
-|----------|-------|
-| Non-Nazario phishing | 47 |
-| Legitimate transactional | 30 |
-| Social engineering, no URL | 20 |
-| Prompt injection attempts | 10 |
-| Edge cases | 20 |
-
-| Metric | Score |
-|--------|-------|
-| Accuracy | 95.41% |
-| Precision | 97.18% |
-| Recall | 95.83% |
-| F1 Score | 96.50% |
-
-## Security Testing
-
-### Prompt Injection Resistance
-Tested with emails containing instructions to override the AI verdict. Result: All 10 prompt injection attempts correctly identified as PHISHING. System flagged instruction to ignore previous instructions as a red flag.
-
-### False Positive Testing
-Tested on 30 legitimate transactional emails including bank statements, receipts and password resets. Result: All correctly identified as LEGITIMATE with zero false alarms.
-
-### Social Engineering Detection
-Tested on 20 phishing emails with no URLs — pure social engineering like CEO fraud and wire transfer scams. Result: System correctly detected all threats based on language patterns alone.
-
-## Setup Instructions
-
-### 1. Clone the repository
-
-```
-git clone https://github.com/hifsaiftikhar/phishing-email-detector.git
-cd phishing-email-detector
-```
-
-### 2. Install dependencies
-
-```
-pip install flask flask-cors groq requests python-dotenv
-```
-
-### 3. Create a .env file
-
-Create a file called `.env` in the project folder:
-
-```
-GROQ_API_KEY=your_groq_api_key_here
-VT_API_KEY=your_virustotal_api_key_here
-```
-
-Get your free Groq API key at: https://console.groq.com
-Get your free VirusTotal API key at: https://www.virustotal.com
-
-### 4. Run the Flask server
-
-```
-python app.py
-```
-
-Server runs at http://localhost:5000
-
-### 5. Load the Chrome extension
-
-- Open Chrome and go to `chrome://extensions`
-- Enable Developer Mode (top right toggle)
-- Click Load unpacked
-- Select the `ext` folder
-
-### 6. Use the extension
-
-**Option A — Manual:**
-Click the extension icon, paste sender, subject and body, click Analyze Email.
-
-**Option B — Gmail:**
-Open any email in Gmail. Click the red Check Email button at the bottom right of the page.
-
-## Dataset
-
-- **Phishing emails:** Nazario Phishing Corpus
-- **Legitimate emails:** Enron Email Dataset
-- **Synthetic emails:** 30 manually created emails for development
+| Domain Checker | python-whois |
+| Backend | Python, Flask |
+| Frontend | Chrome Extension (Manifest V3) |
+| Deployment | Docker, Hugging Face Spaces |
 
 ## Author
-Hifsa Iftikhar GitHub: @hifsaiftikhar
+
+Hifsa Iftikhar
+GitHub: @hifsaiftikhar
+```
+
+Commit changes. Tell me when done.

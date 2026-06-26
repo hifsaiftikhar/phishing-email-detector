@@ -166,5 +166,3 @@ python evaluation/evaluator.py
 Hifsa Iftikhar
 GitHub: @hifsaiftikhar
 ```
-
-Commit changes. Tell me when done.

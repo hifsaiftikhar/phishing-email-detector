@@ -7,15 +7,18 @@ based on what it discovers at each step of the analysis.
 import json
 import os
 from datetime import datetime
+from dotenv import load_dotenv
 from groq import Groq
+
+load_dotenv()
+
 from email_parser import parse_email
-from url_scanner import scan_urls
+from url_scanner import scan_all_urls
 from tools.domain_checker import check_domain
 from security.screener import screen
 
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
-# Tool definitions for the LLM
 TOOLS = [
     {
         "type": "function",
@@ -113,35 +116,31 @@ Do not ask for clarification. Analyze and decide."""
 
 
 def execute_tool(tool_name: str, tool_args: dict, parsed_email: dict) -> str:
-    """Execute a tool and return result as string."""
-    
     if tool_name == "analyze_email_text":
-        # Use the parsed email data
         sender = tool_args.get("sender", parsed_email.get("sender", ""))
         subject = tool_args.get("subject", parsed_email.get("subject", ""))
         body = tool_args.get("body", parsed_email.get("body", ""))
-        
-        # Simple text analysis
+
         red_flags = []
         risk_score = 0
-        
+
         urgency_words = ["urgent", "immediate", "act now", "expires", "suspended", "verify now", "click here"]
         authority_words = ["bank", "paypal", "amazon", "microsoft", "apple", "government", "irs", "fbi"]
         reward_words = ["winner", "prize", "won", "free", "congratulations", "selected"]
-        
+
         body_lower = body.lower()
         subject_lower = subject.lower()
-        
+
         for word in urgency_words:
             if word in body_lower or word in subject_lower:
                 red_flags.append(f"Urgency language: '{word}'")
                 risk_score += 1
-                
+
         for word in authority_words:
             if word in body_lower or word in subject_lower:
                 red_flags.append(f"Authority impersonation: '{word}'")
                 risk_score += 1
-                
+
         for word in reward_words:
             if word in body_lower or word in subject_lower:
                 red_flags.append(f"Reward/prize language: '{word}'")
@@ -153,23 +152,23 @@ def execute_tool(tool_name: str, tool_args: dict, parsed_email: dict) -> str:
             "risk_level": "HIGH" if risk_score >= 3 else "MEDIUM" if risk_score >= 1 else "LOW"
         }
         return json.dumps(result)
-    
+
     elif tool_name == "scan_email_urls":
         urls = tool_args.get("urls", [])
         if not urls:
             return json.dumps({"message": "No URLs to scan"})
-        results = scan_urls(urls)
+        results = scan_all_urls(urls)
         return json.dumps(results)
-    
+
     elif tool_name == "check_sender_domain":
         sender_email = tool_args.get("sender_email", "")
         result = check_domain(sender_email)
         return json.dumps(result)
-    
+
     elif tool_name == "generate_verdict":
         findings = tool_args.get("findings", [])
         risk_score = tool_args.get("risk_score", 0)
-        
+
         if risk_score >= 4:
             verdict = "PHISHING"
             confidence = "HIGH"
@@ -179,7 +178,7 @@ def execute_tool(tool_name: str, tool_args: dict, parsed_email: dict) -> str:
         else:
             verdict = "LEGITIMATE"
             confidence = "HIGH"
-            
+
         result = {
             "verdict": verdict,
             "risk_score": risk_score,
@@ -187,34 +186,43 @@ def execute_tool(tool_name: str, tool_args: dict, parsed_email: dict) -> str:
             "findings": findings
         }
         return json.dumps(result)
-    
+
     return json.dumps({"error": f"Unknown tool: {tool_name}"})
 
 
 def run_agent(email_text: str) -> dict:
-    """
-    Main agent loop. The LLM autonomously decides which tools to call.
-    Returns verdict and full trajectory log.
-    """
     trajectory = []
-    
-    # Step 1: Security screening before anything else
+
+    # Step 1: Security screening
     screen_result = screen(email_text)
     trajectory.append({
         "step": "security_screen",
         "timestamp": datetime.now().isoformat(),
         "result": screen_result
     })
-    
+
     # Step 2: Parse email
-    parsed = parse_email(email_text)
+    lines = email_text.split('\n')
+    sender = ""
+    subject = ""
+    body_lines = []
+    for line in lines:
+        if line.startswith("From: "):
+            sender = line.replace("From: ", "")
+        elif line.startswith("Subject: "):
+            subject = line.replace("Subject: ", "")
+        else:
+            body_lines.append(line)
+    body = "\n".join(body_lines).strip()
+    parsed = parse_email(sender, subject, body)
+
     trajectory.append({
         "step": "email_parse",
         "timestamp": datetime.now().isoformat(),
         "result": parsed
     })
-    
-    # Step 3: Build initial message for agent
+
+    # Step 3: Build initial message
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {
@@ -229,11 +237,11 @@ Security screen: {'INJECTION DETECTED' if screen_result['injection_detected'] el
 """
         }
     ]
-    
-    # Step 4: Agent loop - LLM decides what to do
+
+    # Step 4: Agent loop
     final_verdict = None
     max_iterations = 6
-    
+
     for i in range(max_iterations):
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
@@ -242,11 +250,14 @@ Security screen: {'INJECTION DETECTED' if screen_result['injection_detected'] el
             tool_choice="auto",
             max_tokens=1000
         )
-        
+
         message = response.choices[0].message
-        messages.append({"role": "assistant", "content": message.content, "tool_calls": message.tool_calls})
-        
-        # If no tool calls, agent is done
+        messages.append({
+            "role": "assistant",
+            "content": message.content,
+            "tool_calls": message.tool_calls
+        })
+
         if not message.tool_calls:
             final_verdict = {
                 "verdict": "SUSPICIOUS",
@@ -254,23 +265,19 @@ Security screen: {'INJECTION DETECTED' if screen_result['injection_detected'] el
                 "tools_used": [t["step"] for t in trajectory]
             }
             break
-        
-        # Execute each tool the agent decided to call
+
         for tool_call in message.tool_calls:
             tool_name = tool_call.function.name
             tool_args = json.loads(tool_call.function.arguments)
-            
             tool_result = execute_tool(tool_name, tool_args, parsed)
-            
-            # Log to trajectory
+
             trajectory.append({
                 "step": tool_name,
                 "timestamp": datetime.now().isoformat(),
                 "inputs": tool_args,
                 "output": json.loads(tool_result)
             })
-            
-            # If verdict was generated, capture it
+
             if tool_name == "generate_verdict":
                 result_dict = json.loads(tool_result)
                 final_verdict = {
@@ -281,22 +288,18 @@ Security screen: {'INJECTION DETECTED' if screen_result['injection_detected'] el
                     "tools_used": [t["step"] for t in trajectory],
                     "explanation": f"Agent analyzed email using {len(trajectory)} steps"
                 }
-            
-            # Add tool result to messages so agent can continue reasoning
+
             messages.append({
                 "role": "tool",
                 "tool_call_id": tool_call.id,
                 "content": tool_result
             })
-        
-        # Stop if verdict generated
-        if final_verdict and "verdict" in final_verdict:
-            if any(t["step"] == "generate_verdict" for t in trajectory):
-                break
-    
-    # Save trajectory to file
+
+        if final_verdict and any(t["step"] == "generate_verdict" for t in trajectory):
+            break
+
     save_trajectory(trajectory, final_verdict)
-    
+
     return {
         "verdict": final_verdict,
         "trajectory": trajectory
@@ -304,16 +307,15 @@ Security screen: {'INJECTION DETECTED' if screen_result['injection_detected'] el
 
 
 def save_trajectory(trajectory: list, verdict: dict):
-    """Save agent trajectory to log file."""
     os.makedirs("trajectory_logs", exist_ok=True)
-    
+
     log_entry = {
         "timestamp": datetime.now().isoformat(),
         "verdict": verdict,
         "steps": trajectory,
         "total_steps": len(trajectory)
     }
-    
+
     log_file = f"trajectory_logs/trace_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
     with open(log_file, "w") as f:
         json.dump(log_entry, f, indent=2)

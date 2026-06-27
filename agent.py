@@ -222,6 +222,22 @@ def run_agent(email_text: str) -> dict:
         "result": parsed
     })
 
+    # Force high risk if injection detected
+    if screen_result['injection_detected']:
+        forced_verdict = {
+            "verdict": "PHISHING",
+            "risk_score": 10,
+            "confidence": "HIGH",
+            "findings": screen_result['flags'],
+            "tools_used": ["security_screen", "email_parse"],
+            "explanation": "Prompt injection detected. Email automatically flagged as PHISHING."
+        }
+        save_trajectory(trajectory, forced_verdict)
+        return {
+            "verdict": forced_verdict,
+            "trajectory": trajectory
+        }
+
     # Step 3: Build initial message
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},

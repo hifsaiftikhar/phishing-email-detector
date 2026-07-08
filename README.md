@@ -1,7 +1,7 @@
 # Phishing Email Detection Agent
 
 An AI agent that autonomously detects phishing emails using tool-calling,
-trajectory evaluation, and multi-signal analysis.
+progressive skill disclosure, trajectory evaluation, and multi-signal analysis.
 
 Built as a capstone project for the Google x Kaggle 5-Day AI Agents
 Intensive Vibe Coding Course.
@@ -19,111 +19,113 @@ Example agent reasoning:
 
 The agent's path changes based on evidence. No fixed pipeline.
 
-## Architecture
-
-```
-User (Gmail or manual paste)
-        ↓
-Chrome Extension (ext/)
-        ↓
-Flask API (app.py)
-        ↓
-Security Screener (security/screener.py)
-        ↓
-Agent Loop (agent.py)
-        ↓
-Tool Selection by LLM (autonomous)
-        ↓
-Tools:
-  - analyze_email_text
-  - scan_email_urls (VirusTotal)
-  - check_sender_domain (WHOIS)
-  - generate_verdict
-        ↓
-Trajectory Logger → trajectory_logs/
-        ↓
-Verdict: PHISHING / SUSPICIOUS / LEGITIMATE
-```
-
 ## Course Concepts Applied
 
 | Day | Concept | Implementation |
 |-----|---------|----------------|
 | Day 1 | Agent loop, factory model | agent.py autonomous tool-calling loop |
 | Day 1 | Harness design | AGENTS.md, security screener, trajectory logging |
-| Day 2 | Tool integration | VirusTotal MCP-style tool, WHOIS domain checker |
+| Day 2 | Tool integration | VirusTotal tool, WHOIS domain checker |
 | Day 3 | Agent Skills | skills/ folder with 4 SKILL.md files |
-| Day 3 | Progressive disclosure | Skills load only when triggered |
-| Day 4 | Security screening | Prompt injection detection before LLM call |
+| Day 3 | Progressive disclosure | L1 metadata loaded at startup, L2 body loaded on demand |
+| Day 3 | Skills as source of truth | TOOLS list built dynamically from SKILL.md via skill_loader.py |
+| Day 4 | Security screening | Prompt injection detection before every LLM call |
 | Day 4 | Trajectory evaluation | Every agent step logged to trajectory_logs/ |
 | Day 5 | Spec-driven development | Golden dataset + automated evaluator |
+
+## Architecture
+
+```
+User Email Input
+      ↓
+Security Screener (security/screener.py)
+      ↓ blocks prompt injection
+Agent Loop (agent.py)
+      ↓
+Skill Loader (tools/skill_loader.py)
+  L1: loads skill metadata at startup from SKILL.md files
+  L2: loads full skill body when tool is triggered
+      ↓
+LLM decides which tools to call autonomously
+      ↓
+Tools:
+  - analyze_email_text  ← skills/email-analysis/SKILL.md
+  - scan_email_urls     ← skills/url-scanning/SKILL.md
+  - check_sender_domain ← skills/domain-reputation/SKILL.md
+  - generate_verdict    ← skills/verdict-generation/SKILL.md
+      ↓
+Trajectory Logger → trajectory_logs/
+      ↓
+Verdict: PHISHING / SUSPICIOUS / LEGITIMATE
+```
 
 ## Project Structure
 
 ```
 phishing-email-detector/
-  agent.py                    # Main agent loop with tool calling
-  app.py                      # Flask API
-  email_parser.py             # Email component extraction
-  url_scanner.py              # VirusTotal integration
-  prompt_engine.py            # Legacy LLM engine
-  evaluate.py                 # Legacy evaluator
-  AGENTS.md                   # Agent rules and harness design
+  agent.py                      # Main agent loop with tool calling
+  app.py                        # Flask API
+  email_parser.py               # Email component extraction
+  url_scanner.py                # VirusTotal integration
+  AGENTS.md                     # Agent rules and harness design
   tools/
-    domain_checker.py         # WHOIS domain reputation checker
+    skill_loader.py             # Progressive disclosure L1/L2 loader
+    domain_checker.py           # WHOIS domain reputation checker
   skills/
-    email-analysis/SKILL.md   # Email text analysis skill
-    url-scanning/SKILL.md     # URL scanning skill
-    domain-reputation/SKILL.md # Domain reputation skill
-    verdict-generation/SKILL.md # Verdict generation skill
+    email-analysis/SKILL.md     # Trigger + runbook for text analysis
+    url-scanning/SKILL.md       # Trigger + runbook for URL scanning
+    domain-reputation/SKILL.md  # Trigger + runbook for domain checks
+    verdict-generation/SKILL.md # Trigger + runbook for verdict
   security/
-    screener.py               # Prompt injection detection
+    screener.py                 # Prompt injection detection
   evaluation/
-    golden_dataset.json       # 8 test cases with expected outputs
-    evaluator.py              # Automated evaluation runner
-  trajectory_logs/            # Agent reasoning traces
-  ext/                        # Chrome extension
-  Dockerfile                  # Docker deployment
+    golden_dataset.json         # 8 test cases with expected outputs
+    evaluator.py                # Automated evaluation runner
+  trajectory_logs/              # Real agent reasoning traces
+  ext/                          # Chrome extension
 ```
 
-## Agent Evaluation Results
+## Progressive Disclosure — How Skills Actually Work
 
-Tested on original benchmark:
+Skills are not just documentation. They are the source of truth for tool definitions.
+
+At startup, `skill_loader.py` reads each `SKILL.md` and extracts:
+- Skill name
+- Trigger description → becomes the tool description the LLM sees
+
+When a tool is called, the full `SKILL.md` body loads into context (L2).
+This means the agent only pays token cost for skills it actually uses.
+
+```python
+# L1: Build TOOLS list from SKILL.md files at startup
+TOOLS = build_tools_from_skills()
+
+# L2: Load full skill body when tool is triggered
+skill_context = get_skill_context_for_tool(tool_name)
+```
+
+## Real Trajectory Logs
+
+Three confirmed trajectory logs in `trajectory_logs/`:
+
+**Phishing email** — 6 steps, PHISHING verdict
+- security_screen → email_parse → analyze_email_text → scan_email_urls → check_sender_domain → generate_verdict
+- URL flagged by 12 malicious engines, typosquatting detected on paypa1.com
+
+**Legitimate email** — 5 steps, LEGITIMATE verdict
+- Agent skipped URL scanning (no URLs found)
+- Recognized github.com as known legitimate domain
+
+**Prompt injection** — 2 steps, PHISHING verdict
+- Security screener caught injection before LLM call
+- Agent bypassed entirely, immediate PHISHING verdict
+
+## Evaluation Results
 
 | Dataset | Accuracy | Precision | Recall | F1 |
 |---------|----------|-----------|--------|-----|
 | Nazario + Enron (100 emails) | 99% | 100% | 98% | 98.99% |
 | Structured test set (127 emails) | 95.41% | 97.18% | 95.83% | 96.50% |
-
-## Security Features
-
-- Prompt injection detection before every LLM call
-- All 10 prompt injection attempts correctly flagged as PHISHING
-- Zero false positives on 30 legitimate transactional emails
-- Social engineering detection without URLs
-
-## Sample Trajectory Log
-
-```json
-{
-  "timestamp": "2026-07-01T10:23:45",
-  "verdict": {"verdict": "PHISHING", "risk_score": 5, "confidence": "HIGH"},
-  "steps": [
-    {"step": "security_screen", "result": {"safe": true}},
-    {"step": "email_parse", "result": {"urls": ["http://paypa1.xyz/login"]}},
-    {"step": "analyze_email_text", "output": {"risk_level": "HIGH", "red_flags": ["urgency"]}},
-    {"step": "scan_email_urls", "output": {"verdict": "MALICIOUS", "malicious_count": 8}},
-    {"step": "check_sender_domain", "output": {"typosquat_detected": true, "age_days": 3}},
-    {"step": "generate_verdict", "output": {"verdict": "PHISHING", "risk_score": 5}}
-  ],
-  "total_steps": 6
-}
-```
-
-## Live Demo
-
-API deployed on Hugging Face:
-https://hifsa65-phishing-email-detector.hf.space/health
 
 ## Setup
 
@@ -155,14 +157,16 @@ python evaluation/evaluator.py
 |-----------|------------|
 | Agent Framework | Custom tool-calling loop with Groq |
 | AI Model | Llama 3.3 70B via Groq API |
+| Skill System | Progressive disclosure via skill_loader.py |
 | URL Scanner | VirusTotal API |
 | Domain Checker | python-whois |
+| Security | Custom prompt injection screener |
 | Backend | Python, Flask |
 | Frontend | Chrome Extension (Manifest V3) |
-| Deployment | Docker, Hugging Face Spaces |
 
 ## Author
 
 Hifsa Iftikhar
 GitHub: @hifsaiftikhar
-```
+HuggingFace: Hifsa65
+LinkedIn: linkedin.com/in/hifsa-iftikhar

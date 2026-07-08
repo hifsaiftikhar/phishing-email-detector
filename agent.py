@@ -2,6 +2,10 @@
 Phishing Detection Agent
 A tool-calling agent that autonomously decides which tools to invoke
 based on what it discovers at each step of the analysis.
+
+Skills are loaded dynamically from SKILL.md files (progressive disclosure):
+- L1: Tool descriptions loaded from SKILL.md trigger at startup
+- L2: Full SKILL.md body loaded when tool is actually called
 """
 
 import json
@@ -15,85 +19,12 @@ load_dotenv()
 from email_parser import parse_email
 from url_scanner import scan_all_urls
 from tools.domain_checker import check_domain
+from tools.skill_loader import build_tools_from_skills, get_skill_context_for_tool
 from security.screener import screen
 
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
-TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "analyze_email_text",
-            "description": "Analyzes email text for phishing language patterns, urgency, authority impersonation, and social engineering tactics.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "sender": {"type": "string", "description": "Email sender address"},
-                    "subject": {"type": "string", "description": "Email subject line"},
-                    "body": {"type": "string", "description": "Email body text"}
-                },
-                "required": ["sender", "subject", "body"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "scan_email_urls",
-            "description": "Scans URLs found in the email against VirusTotal threat intelligence database.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "urls": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "List of URLs to scan"
-                    }
-                },
-                "required": ["urls"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "check_sender_domain",
-            "description": "Checks sender domain age and reputation via WHOIS. Useful when domain looks suspicious or unfamiliar.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "sender_email": {
-                        "type": "string",
-                        "description": "Full sender email address to check domain reputation"
-                    }
-                },
-                "required": ["sender_email"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "generate_verdict",
-            "description": "Generates final verdict after gathering enough evidence. Call this when you have sufficient signals to make a determination.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "findings": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "List of all findings from tools used"
-                    },
-                    "risk_score": {
-                        "type": "integer",
-                        "description": "Total risk score based on findings"
-                    }
-                },
-                "required": ["findings", "risk_score"]
-            }
-        }
-    }
-]
+TOOLS = build_tools_from_skills()
 
 SYSTEM_PROMPT = """You are a phishing email detection agent. Your job is to analyze emails 
 and determine if they are phishing attempts, suspicious, or legitimate.
@@ -116,6 +47,8 @@ Do not ask for clarification. Analyze and decide."""
 
 
 def execute_tool(tool_name: str, tool_args: dict, parsed_email: dict) -> str:
+    skill_context = get_skill_context_for_tool(tool_name)
+
     if tool_name == "analyze_email_text":
         sender = tool_args.get("sender", parsed_email.get("sender", ""))
         subject = tool_args.get("subject", parsed_email.get("subject", ""))
@@ -149,7 +82,8 @@ def execute_tool(tool_name: str, tool_args: dict, parsed_email: dict) -> str:
         result = {
             "red_flags": red_flags,
             "risk_score": risk_score,
-            "risk_level": "HIGH" if risk_score >= 3 else "MEDIUM" if risk_score >= 1 else "LOW"
+            "risk_level": "HIGH" if risk_score >= 3 else "MEDIUM" if risk_score >= 1 else "LOW",
+            "skill_loaded": "email-analysis" if skill_context else None
         }
         return json.dumps(result)
 
@@ -163,6 +97,7 @@ def execute_tool(tool_name: str, tool_args: dict, parsed_email: dict) -> str:
     elif tool_name == "check_sender_domain":
         sender_email = tool_args.get("sender_email", "")
         result = check_domain(sender_email)
+        result["skill_loaded"] = "domain-reputation" if skill_context else None
         return json.dumps(result)
 
     elif tool_name == "generate_verdict":
@@ -183,7 +118,8 @@ def execute_tool(tool_name: str, tool_args: dict, parsed_email: dict) -> str:
             "verdict": verdict,
             "risk_score": risk_score,
             "confidence": confidence,
-            "findings": findings
+            "findings": findings,
+            "skill_loaded": "verdict-generation" if skill_context else None
         }
         return json.dumps(result)
 
@@ -193,7 +129,6 @@ def execute_tool(tool_name: str, tool_args: dict, parsed_email: dict) -> str:
 def run_agent(email_text: str) -> dict:
     trajectory = []
 
-    # Step 1: Security screening
     screen_result = screen(email_text)
     trajectory.append({
         "step": "security_screen",
@@ -201,7 +136,6 @@ def run_agent(email_text: str) -> dict:
         "result": screen_result
     })
 
-    # Step 2: Parse email
     lines = email_text.split('\n')
     sender = ""
     subject = ""
@@ -222,7 +156,6 @@ def run_agent(email_text: str) -> dict:
         "result": parsed
     })
 
-    # Force high risk if injection detected
     if screen_result['injection_detected']:
         forced_verdict = {
             "verdict": "PHISHING",
@@ -238,7 +171,6 @@ def run_agent(email_text: str) -> dict:
             "trajectory": trajectory
         }
 
-    # Step 3: Build initial message
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {
@@ -254,7 +186,6 @@ Security screen: {'INJECTION DETECTED' if screen_result['injection_detected'] el
         }
     ]
 
-    # Step 4: Agent loop
     final_verdict = None
     max_iterations = 6
 

@@ -167,8 +167,7 @@ python evaluation/evaluator.py
 ## Author
 
 Hifsa Iftikhar
+
 GitHub: @hifsaiftikhar
 
 HuggingFace: Hifsa65
-
-LinkedIn: linkedin.com/in/hifsa-iftikhar

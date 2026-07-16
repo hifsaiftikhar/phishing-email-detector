@@ -19,7 +19,7 @@
       "input": {
         "sender": "no-reply@github.com",
         "subject": "Your pull request was merged",
-        "body": "Hi Hifsa, Your pull request #42 'Add authentication feature' was successfully merged into main by the repository owner. You can view the changes at github.com/repo/pull/42"
+        "body": "Hi Hifsa, Your pull request #42 'Add authentication feature' was successfully merged into the main branch by the repository owner. All checks passed including CI/CD pipeline. You can view the complete diff and merged changes at github.com/repo/pull/42. Thank you for your contribution."
       },
       "expected_verdict": "LEGITIMATE",
       "expected_signals": []

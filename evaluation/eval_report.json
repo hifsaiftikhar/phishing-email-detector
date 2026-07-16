@@ -1,0 +1,159 @@
+{
+  "total": 8,
+  "correct": 7,
+  "accuracy": 87.5,
+  "results": [
+    {
+      "id": "TC001",
+      "category": "obvious_phishing",
+      "expected": "PHISHING",
+      "actual": "PHISHING",
+      "passed": true,
+      "steps_taken": 6,
+      "tools_used": [
+        "security_screen",
+        "email_parse",
+        "analyze_email_text",
+        "scan_email_urls",
+        "check_sender_domain",
+        "generate_verdict"
+      ]
+    },
+    {
+      "id": "TC002",
+      "category": "legitimate_email",
+      "expected": "LEGITIMATE",
+      "actual": "LEGITIMATE",
+      "passed": true,
+      "steps_taken": 5,
+      "tools_used": [
+        "security_screen",
+        "email_parse",
+        "analyze_email_text",
+        "check_sender_domain",
+        "generate_verdict"
+      ]
+    },
+    {
+      "id": "TC003",
+      "category": "prompt_injection",
+      "expected": "PHISHING",
+      "actual": "PHISHING",
+      "passed": true,
+      "steps_taken": 2,
+      "tools_used": [
+        "security_screen",
+        "email_parse"
+      ]
+    },
+    {
+      "id": "TC004",
+      "category": "ceo_fraud",
+      "expected": "PHISHING",
+      "actual": "PHISHING",
+      "passed": true,
+      "steps_taken": 5,
+      "tools_used": [
+        "security_screen",
+        "email_parse",
+        "analyze_email_text",
+        "check_sender_domain",
+        "generate_verdict"
+      ]
+    },
+    {
+      "id": "TC005",
+      "category": "legitimate_transactional",
+      "expected": "LEGITIMATE",
+      "actual": "SUSPICIOUS",
+      "passed": false,
+      "steps_taken": 5,
+      "tools_used": [
+        "security_screen",
+        "email_parse",
+        "analyze_email_text",
+        "check_sender_domain",
+        "generate_verdict"
+      ]
+    },
+    {
+      "id": "TC006",
+      "category": "suspicious_no_urls",
+      "expected": "PHISHING",
+      "actual": "PHISHING",
+      "passed": true,
+      "steps_taken": 5,
+      "tools_used": [
+        "security_screen",
+        "email_parse",
+        "analyze_email_text",
+        "check_sender_domain",
+        "generate_verdict"
+      ]
+    },
+    {
+      "id": "TC007",
+      "category": "new_domain_phishing",
+      "expected": "PHISHING",
+      "actual": "PHISHING",
+      "passed": true,
+      "steps_taken": 5,
+      "tools_used": [
+        "security_screen",
+        "email_parse",
+        "analyze_email_text",
+        "check_sender_domain",
+        "generate_verdict"
+      ]
+    },
+    {
+      "id": "TC008",
+      "category": "legitimate_newsletter",
+      "expected": "LEGITIMATE",
+      "actual": "LEGITIMATE",
+      "passed": true,
+      "steps_taken": 5,
+      "tools_used": [
+        "security_screen",
+        "email_parse",
+        "analyze_email_text",
+        "check_sender_domain",
+        "generate_verdict"
+      ]
+    }
+  ],
+  "category_breakdown": {
+    "obvious_phishing": {
+      "correct": 1,
+      "total": 1
+    },
+    "legitimate_email": {
+      "correct": 1,
+      "total": 1
+    },
+    "prompt_injection": {
+      "correct": 1,
+      "total": 1
+    },
+    "ceo_fraud": {
+      "correct": 1,
+      "total": 1
+    },
+    "legitimate_transactional": {
+      "correct": 0,
+      "total": 1
+    },
+    "suspicious_no_urls": {
+      "correct": 1,
+      "total": 1
+    },
+    "new_domain_phishing": {
+      "correct": 1,
+      "total": 1
+    },
+    "legitimate_newsletter": {
+      "correct": 1,
+      "total": 1
+    }
+  }
+}

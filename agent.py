@@ -5,7 +5,7 @@ based on what it discovers at each step of the analysis.
 
 Skills are loaded dynamically from SKILL.md files (progressive disclosure):
 - L1: Tool descriptions loaded from SKILL.md trigger at startup
-- L2: Full SKILL.md body loaded when tool is actually called
+- L2: Full SKILL.md body loaded when tool is actually called and passed to LLM
 """
 
 import json
@@ -24,6 +24,8 @@ from security.screener import screen
 
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
+# L1: Load tool definitions dynamically from SKILL.md files at startup
+# Tool descriptions come from SKILL.md trigger descriptions, not hardcoded strings
 TOOLS = build_tools_from_skills()
 
 SYSTEM_PROMPT = """You are a phishing email detection agent. Your job is to analyze emails 
@@ -47,6 +49,8 @@ Do not ask for clarification. Analyze and decide."""
 
 
 def execute_tool(tool_name: str, tool_args: dict, parsed_email: dict) -> str:
+    # L2: Load full skill body when tool is triggered (progressive disclosure)
+    # skill_context is passed back to LLM so it sees the runbook
     skill_context = get_skill_context_for_tool(tool_name)
 
     if tool_name == "analyze_email_text":
@@ -83,7 +87,8 @@ def execute_tool(tool_name: str, tool_args: dict, parsed_email: dict) -> str:
             "red_flags": red_flags,
             "risk_score": risk_score,
             "risk_level": "HIGH" if risk_score >= 3 else "MEDIUM" if risk_score >= 1 else "LOW",
-            "skill_loaded": "email-analysis" if skill_context else None
+            "skill_loaded": "email-analysis" if skill_context else None,
+            "skill_guidance": skill_context[:500] if skill_context else None
         }
         return json.dumps(result)
 
@@ -98,6 +103,7 @@ def execute_tool(tool_name: str, tool_args: dict, parsed_email: dict) -> str:
         sender_email = tool_args.get("sender_email", "")
         result = check_domain(sender_email)
         result["skill_loaded"] = "domain-reputation" if skill_context else None
+        result["skill_guidance"] = skill_context[:500] if skill_context else None
         return json.dumps(result)
 
     elif tool_name == "generate_verdict":
@@ -119,7 +125,8 @@ def execute_tool(tool_name: str, tool_args: dict, parsed_email: dict) -> str:
             "risk_score": risk_score,
             "confidence": confidence,
             "findings": findings,
-            "skill_loaded": "verdict-generation" if skill_context else None
+            "skill_loaded": "verdict-generation" if skill_context else None,
+            "skill_guidance": skill_context[:500] if skill_context else None
         }
         return json.dumps(result)
 
@@ -129,6 +136,7 @@ def execute_tool(tool_name: str, tool_args: dict, parsed_email: dict) -> str:
 def run_agent(email_text: str) -> dict:
     trajectory = []
 
+    # Step 1: Security screening before anything else
     screen_result = screen(email_text)
     trajectory.append({
         "step": "security_screen",
@@ -136,6 +144,7 @@ def run_agent(email_text: str) -> dict:
         "result": screen_result
     })
 
+    # Step 2: Parse email
     lines = email_text.split('\n')
     sender = ""
     subject = ""
@@ -156,6 +165,7 @@ def run_agent(email_text: str) -> dict:
         "result": parsed
     })
 
+    # Force high risk if injection detected — bypass LLM entirely
     if screen_result['injection_detected']:
         forced_verdict = {
             "verdict": "PHISHING",
@@ -171,6 +181,7 @@ def run_agent(email_text: str) -> dict:
             "trajectory": trajectory
         }
 
+    # Step 3: Build initial message for agent
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {
@@ -186,6 +197,7 @@ Security screen: {'INJECTION DETECTED' if screen_result['injection_detected'] el
         }
     ]
 
+    # Step 4: Agent loop — LLM autonomously decides which tools to call
     final_verdict = None
     max_iterations = 6
 
@@ -205,6 +217,7 @@ Security screen: {'INJECTION DETECTED' if screen_result['injection_detected'] el
             "tool_calls": message.tool_calls
         })
 
+        # If no tool calls, agent is done reasoning
         if not message.tool_calls:
             final_verdict = {
                 "verdict": "SUSPICIOUS",
@@ -213,6 +226,7 @@ Security screen: {'INJECTION DETECTED' if screen_result['injection_detected'] el
             }
             break
 
+        # Execute each tool the agent decided to call
         for tool_call in message.tool_calls:
             tool_name = tool_call.function.name
             tool_args = json.loads(tool_call.function.arguments)
@@ -236,6 +250,8 @@ Security screen: {'INJECTION DETECTED' if screen_result['injection_detected'] el
                     "explanation": f"Agent analyzed email using {len(trajectory)} steps"
                 }
 
+            # Tool result is passed back to LLM including skill_guidance
+            # This means LLM sees the SKILL.md runbook as part of tool response
             messages.append({
                 "role": "tool",
                 "tool_call_id": tool_call.id,

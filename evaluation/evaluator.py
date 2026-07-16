@@ -45,7 +45,17 @@ def run_evaluation():
         print(f"Testing {case_id} ({category})...")
         
         try:
-            result = run_agent(email_text)
+            import time
+            result = None
+            for attempt in range(3):
+                try:
+                    result = run_agent(email_text)
+                    break
+                except Exception as retry_err:
+                    if attempt < 2:
+                        time.sleep(2)
+                    else:
+                        raise retry_err
             verdict = result["verdict"]
             actual = verdict.get("verdict", "SUSPICIOUS")
             trajectory = result["trajectory"]

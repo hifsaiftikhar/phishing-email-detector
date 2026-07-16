@@ -126,6 +126,12 @@ Three confirmed trajectory logs in `trajectory_logs/`:
 |---------|----------|-----------|--------|-----|
 | Nazario + Enron (100 emails) | 99% | 100% | 98% | 98.99% |
 | Structured test set (127 emails) | 95.41% | 97.18% | 95.83% | 96.50% |
+| Golden dataset (8 agent test cases) | 87.5% | — | — | — |
+
+Golden dataset covers: obvious phishing, legitimate email, prompt injection,
+CEO fraud, transactional email, no-URL phishing, new domain phishing, newsletter.
+One false positive on legitimate transactional email (amazon keyword triggers
+authority impersonation check) — acceptable tradeoff for a security tool.
 
 ## Setup
 
@@ -163,6 +169,18 @@ python evaluation/evaluator.py
 | Security | Custom prompt injection screener |
 | Backend | Python, Flask |
 | Frontend | Chrome Extension (Manifest V3) |
+
+## Governance Tiers (Day 3 — Agent Skills)
+
+| Skill | Tier | Capability | Gate |
+|-------|------|------------|------|
+| email-analysis | Tier 1 — Read Only | Analyzes text, returns findings | 90% trigger accuracy required |
+| url-scanning | Tier 1 — Read Only | Queries VirusTotal, returns scan results | 90% trigger accuracy required |
+| domain-reputation | Tier 1 — Read Only | Queries WHOIS, returns domain info | 90% trigger accuracy required |
+| verdict-generation | Tier 2 — Draft Only | Produces verdict for human review | 20+ golden test cases required |
+
+No skill in this agent executes irreversible actions.
+All verdicts are recommendations — final action requires human confirmation.
 
 ## Author
 

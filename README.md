@@ -125,7 +125,7 @@ Three confirmed trajectory logs in `trajectory_logs/`:
 | Dataset | Accuracy | Precision | Recall | F1 |
 |---------|----------|-----------|--------|-----|
 | Nazario + Enron (100 emails) | 99% | 100% | 98% | 98.99% |
-| Structured test set (127 emails) | 95.41% | 97.18% | 95.83% | 96.50% |
+| Structured test set (127 emails) | 93.86% | 97.10% | 93.06% | 95.04% |
 | Golden dataset (8 agent test cases) | 87.5% | — | — | — |
 
 Golden dataset covers: obvious phishing, legitimate email, prompt injection,

@@ -3,9 +3,8 @@
 An AI agent that autonomously detects phishing emails using tool-calling,
 progressive skill disclosure, trajectory evaluation, and multi-signal analysis.
 
-## Demo
+![GIF description](https://github.com/hifsaiftikhar/phishing-email-detector/assets/.../GIF.gif)
 
-![Phishing Detector Demo](assets/demo.gif)
 
 Built as a capstone project for the Google x Kaggle 5-Day AI Agents
 Intensive Vibe Coding Course.

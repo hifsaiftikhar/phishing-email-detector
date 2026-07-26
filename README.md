@@ -9,9 +9,6 @@ progressive skill disclosure, trajectory evaluation, and multi-signal analysis.
 
 The extension also works directly inside Gmail — click the floating "Check Email" button on any open email to analyze it in place. (Manual paste-in shown above for demo purposes.)
 
-Built as a capstone project for the Google x Kaggle 5-Day AI Agents
-Intensive Vibe Coding Course.
-
 ## What Makes This an Agent (Not Just a Classifier)
 
 Most phishing detectors make one LLM call and return a verdict.
@@ -187,6 +184,10 @@ python evaluation/evaluator.py
 
 No skill in this agent executes irreversible actions.
 All verdicts are recommendations — final action requires human confirmation.
+
+## Background
+
+Originally built as a capstone project for the Google x Kaggle 5-Day AI Agents Intensive course.
 
 ## Author
 

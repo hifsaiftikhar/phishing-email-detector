@@ -7,6 +7,8 @@ progressive skill disclosure, trajectory evaluation, and multi-signal analysis.
 
 ![Phishing Detector Demo](assets/demo.gif)
 
+The extension also works directly inside Gmail — click the floating "Check Email" button on any open email to analyze it in place. (Manual paste-in shown above for demo purposes.)
+
 Built as a capstone project for the Google x Kaggle 5-Day AI Agents
 Intensive Vibe Coding Course.
 
